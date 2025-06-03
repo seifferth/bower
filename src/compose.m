@@ -986,10 +986,10 @@ staging_screen(Screen, MaybeKey, !.StagingInfo, !.AttachInfo, !.PagerInfo,
         edit_header(Screen, replyto, !StagingInfo, !CryptoInfo, !IO),
         Action = continue
     ; KeyCode = char('E') ->
-        toggle_encrypt(!StagingInfo, !CryptoInfo, !IO),
+        toggle_encrypt(!.StagingInfo, !CryptoInfo, !IO),
         Action = continue
     ; KeyCode = char('S') ->
-        toggle_sign(!StagingInfo, !CryptoInfo, !IO),
+        toggle_sign(!.StagingInfo, !CryptoInfo, !IO),
         Action = continue
     ; KeyCode = char('H') ->
         toggle_alt_html(MessageUpdate0, NeedsResize, !StagingInfo, !IO),
@@ -1293,20 +1293,20 @@ update_header(Config, Opt, HeaderType, Input, !Headers, !Parsed, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred toggle_encrypt(staging_info::in, staging_info::out,
-    crypto_info::in, crypto_info::out, io::di, io::uo) is det.
+:- pred toggle_encrypt(staging_info::in, crypto_info::in, crypto_info::out,
+    io::di, io::uo) is det.
 
-toggle_encrypt(!StagingInfo, !CryptoInfo, !IO) :-
+toggle_encrypt(StagingInfo, !CryptoInfo, !IO) :-
     !CryptoInfo ^ ci_encrypt := not(!.CryptoInfo ^ ci_encrypt),
-    ParsedHeaders = !.StagingInfo ^ si_parsed_hdrs,
+    ParsedHeaders = StagingInfo ^ si_parsed_hdrs,
     maintain_encrypt_keys(ParsedHeaders, !CryptoInfo, !IO).
 
-:- pred toggle_sign(staging_info::in, staging_info::out,
-    crypto_info::in, crypto_info::out, io::di, io::uo) is det.
+:- pred toggle_sign(staging_info::in, crypto_info::in, crypto_info::out,
+    io::di, io::uo) is det.
 
-toggle_sign(!StagingInfo, !CryptoInfo, !IO) :-
+toggle_sign(StagingInfo, !CryptoInfo, !IO) :-
     !CryptoInfo ^ ci_sign := not(!.CryptoInfo ^ ci_sign),
-    ParsedHeaders = !.StagingInfo ^ si_parsed_hdrs,
+    ParsedHeaders = StagingInfo ^ si_parsed_hdrs,
     maintain_sign_keys(ParsedHeaders, !CryptoInfo, !IO).
 
 :- pred toggle_alt_html(message_update::out, bool::out, staging_info::in,

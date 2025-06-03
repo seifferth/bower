@@ -979,10 +979,10 @@ pager_input(Screen, NumRows, KeyCode, Folding, Action, MessageUpdate,
             Action = continue
         ;
             Binding = save_part,
-            save_part(Screen, Action, MessageUpdate, !Info, !History, !IO)
+            save_part(Screen, !.Info, Action, MessageUpdate, !History, !IO)
         ;
             Binding = open_part,
-            open_part(Screen, Action, MessageUpdate, !Info, !History, !IO)
+            open_part(Screen, !.Info, Action, MessageUpdate, !History, !IO)
         ;
             (
                 Binding = cycle_alternatives,
@@ -2326,13 +2326,13 @@ decrypt_arg_bool(no) = "--decrypt=false".
 
 %-----------------------------------------------------------------------------%
 
-:- pred save_part(screen::in, pager_action::out, message_update::out,
-    pager_info::in, pager_info::out, common_history::in, common_history::out,
+:- pred save_part(screen::in, pager_info::in, pager_action::out,
+    message_update::out, common_history::in, common_history::out,
     io::di, io::uo) is det.
 
-save_part(Screen, Action, MessageUpdate, !Info, !History, !IO) :-
-    ( get_highlighted_thing(!.Info, highlighted_part(Part, MaybeSubject)) ->
-        prompt_save_part(Screen, Part, MaybeSubject, !Info, !History, !IO),
+save_part(Screen, Info, Action, MessageUpdate, !History, !IO) :-
+    ( get_highlighted_thing(Info, highlighted_part(Part, MaybeSubject)) ->
+        prompt_save_part(Screen, Info, Part, MaybeSubject, !History, !IO),
         MessageUpdate = no_change,
         Action = redraw
     ;
@@ -2340,12 +2340,12 @@ save_part(Screen, Action, MessageUpdate, !Info, !History, !IO) :-
         MessageUpdate = set_warning("No message or attachment selected.")
     ).
 
-:- pred prompt_save_part(screen::in, part::in, maybe(header_value)::in,
-    pager_info::in, pager_info::out, common_history::in, common_history::out,
+:- pred prompt_save_part(screen::in, pager_info::in, part::in,
+    maybe(header_value)::in, common_history::in, common_history::out,
     io::di, io::uo) is det.
 
-prompt_save_part(Screen, Part, MaybeSubject, !Info, !History, !IO) :-
-    Config = !.Info ^ p_config,
+prompt_save_part(Screen, Info, Part, MaybeSubject, !History, !IO) :-
+    Config = Info ^ p_config,
     MessageId = Part ^ pt_msgid,
     MaybePartId = Part ^ pt_part,
     MaybePartFilename = Part ^ pt_filename,
@@ -2530,16 +2530,16 @@ do_save_part_text_content(FileName, PartContent, Res, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred open_part(screen::in, pager_action::out, message_update::out,
-    pager_info::in, pager_info::out, common_history::in, common_history::out,
+:- pred open_part(screen::in, pager_info::in, pager_action::out,
+    message_update::out, common_history::in, common_history::out,
     io::di, io::uo) is det.
 
-open_part(Screen, Action, MessageUpdate, !Info, !History, !IO) :-
-    ( get_highlighted_thing(!.Info, Thing) ->
+open_part(Screen, Info, Action, MessageUpdate, !History, !IO) :-
+    ( get_highlighted_thing(Info, Thing) ->
         (
             Thing = highlighted_part(Part, _MaybeFilename),
-            prompt_open_part(Screen, Part, MessageUpdate, Tempfile,
-                !Info, !History, !IO),
+            prompt_open_part(Screen, Info, Part, MessageUpdate, Tempfile,
+                !History, !IO),
             (
                 Tempfile = yes(FileName),
                 Action = press_key_to_delete(FileName)
@@ -2549,7 +2549,7 @@ open_part(Screen, Action, MessageUpdate, !Info, !History, !IO) :-
             )
         ;
             Thing = highlighted_url(Url),
-            prompt_open_url(Screen, Url, MessageUpdate, !Info, !History, !IO),
+            prompt_open_url(Screen, Url, MessageUpdate, !History, !IO),
             Action = redraw
         ;
             Thing = highlighted_fold_marker,
@@ -2561,11 +2561,11 @@ open_part(Screen, Action, MessageUpdate, !Info, !History, !IO) :-
         MessageUpdate = set_warning("No message or attachment selected.")
     ).
 
-:- pred prompt_open_part(screen::in, part::in, message_update::out,
-    maybe(string)::out, pager_info::in, pager_info::out,
+:- pred prompt_open_part(screen::in, pager_info::in, part::in,
+    message_update::out, maybe(string)::out,
     common_history::in, common_history::out, io::di, io::uo) is det.
 
-prompt_open_part(Screen, Part, MessageUpdate, Tempfile, !Info, !History, !IO)
+prompt_open_part(Screen, Info, Part, MessageUpdate, Tempfile, !History, !IO)
         :-
     OpenHistory0 = !.History ^ ch_open_part_history,
     text_entry(Screen, "Open with command: ", OpenHistory0, complete_none,
@@ -2576,20 +2576,18 @@ prompt_open_part(Screen, Part, MessageUpdate, Tempfile, !Info, !History, !IO)
     ->
         add_history_nodup(Command1, OpenHistory0, OpenHistory),
         !History ^ ch_open_part_history := OpenHistory,
-        Config = !.Info ^ p_config,
-        do_open_part(Config, Screen, Part, Command1, MessageUpdate,
-            Tempfile, !Info, !IO)
+        Config = Info ^ p_config,
+        do_open_part(Screen, Config, Part, Command1, MessageUpdate,
+            Tempfile, !IO)
     ;
         MessageUpdate = clear_message,
         Tempfile = no
     ).
 
-:- pred do_open_part(prog_config::in, screen::in, part::in, string::in,
-    message_update::out, maybe(string)::out, pager_info::in, pager_info::out,
-    io::di, io::uo) is det.
+:- pred do_open_part(screen::in, prog_config::in, part::in, string::in,
+    message_update::out, maybe(string)::out, io::di, io::uo) is det.
 
-do_open_part(Config, Screen, Part, CommandStr, MessageUpdate, Tempfile,
-        !Info, !IO) :-
+do_open_part(Screen, Config, Part, CommandStr, MessageUpdate, Tempfile, !IO) :-
     parse_open_command(CommandStr, ParseRes),
     (
         ParseRes = empty_command,
@@ -2597,20 +2595,20 @@ do_open_part(Config, Screen, Part, CommandStr, MessageUpdate, Tempfile,
         Tempfile = no
     ;
         ParseRes = command(CommandTokens, Bg),
-        do_open_part_2(Config, Screen, Part, CommandTokens, Bg, MessageUpdate,
-            Tempfile, !Info, !IO)
+        do_open_part_2(Screen, Config, Part, CommandTokens, Bg, MessageUpdate,
+            Tempfile, !IO)
     ;
         ParseRes = error(Message),
         MessageUpdate = set_warning(Message),
         Tempfile = no
     ).
 
-:- pred do_open_part_2(prog_config::in, screen::in, part::in,
+:- pred do_open_part_2(screen::in, prog_config::in, part::in,
     list(shell_token)::in, run_in_background::in, message_update::out,
-    maybe(string)::out, pager_info::in, pager_info::out, io::di, io::uo) is det.
+    maybe(string)::out, io::di, io::uo) is det.
 
-do_open_part_2(Config, Screen, Part, CommandTokens, Bg, MessageUpdate,
-        Tempfile, !Info, !IO) :-
+do_open_part_2(Screen, Config, Part, CommandTokens, Bg, MessageUpdate,
+        Tempfile, !IO) :-
     MaybePartFileName = Part ^ pt_filename,
     (
         MaybePartFileName = yes(filename(PartFilename)),
@@ -2765,10 +2763,9 @@ remove_bg_operator_rev(RevTokens0, RevTokens) :-
 %-----------------------------------------------------------------------------%
 
 :- pred prompt_open_url(screen::in, string::in, message_update::out,
-    pager_info::in, pager_info::out, common_history::in, common_history::out,
-    io::di, io::uo) is det.
+    common_history::in, common_history::out, io::di, io::uo) is det.
 
-prompt_open_url(Screen, Url, MessageUpdate, !Info, !History, !IO) :-
+prompt_open_url(Screen, Url, MessageUpdate, !History, !IO) :-
     OpenHistory0 = !.History ^ ch_open_url_history,
     % No completion for command inputs yet.
     text_entry(Screen, "Open URL with command: ", OpenHistory0, complete_none,

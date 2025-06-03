@@ -115,7 +115,7 @@ parse_search_string(Input, Res) :-
 
 :- pred no_skip_whitespace(src::in, unit::out, ps::in, ps::out) is semidet.
 
-no_skip_whitespace(_Src, unit, !PS) :-
+no_skip_whitespace(_Src, unit, PS, PS) :-
     semidet_true.
 
 :- pred tokens_eof(src::in, list(token)::out, ps::in, ps::out) is semidet.

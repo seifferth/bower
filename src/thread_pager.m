@@ -1927,24 +1927,24 @@ bulk_tag(Screen, Done, !Info, !IO) :-
         ; KeyCode = char('d') ->
             AddTags = set.make_singleton_set(tag("deleted")),
             RemoveTags = set.init,
-            bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info, !IO),
+            bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info),
             Done = yes
         ; KeyCode = char('u') ->
             AddTags = set.init,
             RemoveTags = set.make_singleton_set(tag("deleted")),
-            bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info, !IO),
+            bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info),
             Done = yes
         ; KeyCode = char('U') ->
-            bulk_toggle_unread(MessageUpdate, Done, !Info, !IO)
+            bulk_toggle_unread(MessageUpdate, Done, !Info)
         ; KeyCode = char('''') ->
             AddTags = set.init,
             RemoveTags = set.make_singleton_set(tag("unread")),
-            bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info, !IO),
+            bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info),
             Done = yes
         ; KeyCode = char('$') ->
             AddTags = set.make_singleton_set(tag("spam")),
             RemoveTags = set.make_singleton_set(tag("unread")),
-            bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info, !IO),
+            bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info),
             Done = yes
         ;
             MessageUpdate = set_info("No changes."),
@@ -2017,16 +2017,16 @@ bulk_arbitrary_tag_changes(Screen, Initial, Completion, MessageUpdate, !Info,
         !Info, !IO),
     (
         TagChanges = yes(AddTags, RemoveTags),
-        bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info, !IO)
+        bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info)
     ;
         TagChanges = no,
         MessageUpdate = clear_message
     ).
 
 :- pred bulk_tag_changes(set(tag)::in, set(tag)::in, message_update::out,
-    thread_pager_info::in, thread_pager_info::out, io::di, io::uo) is det.
+    thread_pager_info::in, thread_pager_info::out) is det.
 
-bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info, !IO) :-
+bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info) :-
     Scrollable0 = !.Info ^ tp_scrollable,
     Lines0 = get_lines_list(Scrollable0),
     list.map_foldl(update_selected_line_for_tag_changes(AddTags, RemoveTags),
@@ -2068,9 +2068,9 @@ update_selected_line_for_tag_changes(AddTags, RemoveTags, Line0, Line,
     ).
 
 :- pred bulk_toggle_unread(message_update::out, bool::out,
-    thread_pager_info::in, thread_pager_info::out, io::di, io::uo) is det.
+    thread_pager_info::in, thread_pager_info::out) is det.
 
-bulk_toggle_unread(MessageUpdate, Done, !Info, !IO) :-
+bulk_toggle_unread(MessageUpdate, Done, !Info) :-
     Scrollable0 = !.Info ^ tp_scrollable,
     Lines0 = get_lines_list(Scrollable0),
     ( common_unread_state(Lines0, no, yes(CommonUnreadState)) ->
@@ -2083,7 +2083,7 @@ bulk_toggle_unread(MessageUpdate, Done, !Info, !IO) :-
             AddTags = set.init,
             RemoveTags = set.make_singleton_set(tag("unread"))
         ),
-        bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info, !IO),
+        bulk_tag_changes(AddTags, RemoveTags, MessageUpdate, !Info),
         Done = yes
     ;
         Message = "Selected messages differ in unread state.",

@@ -414,7 +414,7 @@ unescape_loop(Src, AnchorPos, !Pos, !RevPieces) :-
         add_substring_piece(Src, AnchorPos, !.Pos, !RevPieces)
     ; C0 = ('\\') ->
         add_substring_piece(Src, AnchorPos, Pos0, !RevPieces),
-        unescape_sequence(Src, MaybeValid, !Pos, !RevPieces),
+        unescape_sequence(Src, MaybeValid, !Pos),
         (
             MaybeValid = yes(SeqString),
             !:RevPieces = literal(SeqString, !.RevPieces)
@@ -454,23 +454,23 @@ add_substring_piece(Src, AnchorPos, Pos, RevPieces0, RevPieces) :-
 add_replacement_char(RevPieces0, RevPieces) :-
     RevPieces = literal("\ufffd", RevPieces0).
 
-:- pred unescape_sequence(string::in, maybe(string)::out, int::in, int::out,
-    pieces::in, pieces::out) is det.
+:- pred unescape_sequence(string::in, maybe(string)::out, int::in, int::out)
+    is det.
 
-unescape_sequence(Src, MaybeValid, !Pos, !RevPieces) :-
+unescape_sequence(Src, MaybeValid, !Pos) :-
     next_char(Src, Char, !Pos),
     ( simple_escape(Char, RealChar) ->
         MaybeValid = yes(RealChar)
     ; Char = 'u' ->
-        unescape_unicode_sequence(Src, MaybeValid, !Pos, !RevPieces)
+        unescape_unicode_sequence(Src, MaybeValid, !Pos)
     ;
         MaybeValid = no
     ).
 
 :- pred unescape_unicode_sequence(string::in, maybe(string)::out,
-    int::in, int::out, pieces::in, pieces::out) is det.
+    int::in, int::out) is det.
 
-unescape_unicode_sequence(Src, MaybeValid, !Pos, !RevPieces) :-
+unescape_unicode_sequence(Src, MaybeValid, !Pos) :-
     maybe_hex_codepoint(Src, MaybeCodePoint1, !Pos),
     (
         MaybeCodePoint1 = yes(CodePoint1),

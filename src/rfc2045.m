@@ -59,28 +59,27 @@ parameter_to_string(Attr - Value, String, !:Ok) :-
     some [!Acc] (
         !:Acc = [],
         !:Ok = yes,
-        attribute(Attr, !Acc, !Ok),
+        attribute(Attr, !Acc),
         cons("=", !Acc),
         value(Value, !Acc, !Ok),
         list.reverse(!.Acc, Strings),
         string.append_list(Strings, String)
     ).
 
-:- pred token(token::in, acc::in, acc::out, bool::in, bool::out) is det.
+:- pred token(token::in, acc::in, acc::out) is det.
 
-token(token(String), !Acc, !Ok) :-
+token(token(String), !Acc) :-
     cons(String, !Acc).
 
-:- pred attribute(attribute::in, acc::in, acc::out, bool::in, bool::out)
-    is det.
+:- pred attribute(attribute::in, acc::in, acc::out) is det.
 
-attribute(attribute(String), !Acc, !Ok) :-
-    token(token(String), !Acc, !Ok).
+attribute(attribute(String), !Acc) :-
+    token(token(String), !Acc).
 
 :- pred value(value::in, acc::in, acc::out, bool::in, bool::out) is det.
 
 value(token(Token), !Acc, !Ok) :-
-    token(Token, !Acc, !Ok).
+    token(Token, !Acc).
 value(quoted_string(QuotedString), !Acc, !Ok) :-
     quoted_string_ascii_only(QuotedString, !Acc, !Ok).
 

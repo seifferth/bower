@@ -466,7 +466,7 @@ index_loop(Screen, OnEntry, MaybeUpdateActivity, !.IndexInfo, !IO) :-
         Config = !.IndexInfo ^ i_config,
         Crypto = !.IndexInfo ^ i_crypto,
         Tokens = !.IndexInfo ^ i_search_tokens,
-        index_poll_terms(Tokens, IndexPollTerms, !IO),
+        index_poll_terms(Tokens, IndexPollTerms),
         CommonHistory0 = !.IndexInfo ^ i_common_history,
         % Use the last search string that was entered in any view, not
         % necessarily the active search string in the index view.
@@ -2035,7 +2035,7 @@ sched_poll(Time, !Info, !IO) :-
     get_notmuch_command(Config, Notmuch),
     Tokens = !.Info ^ i_search_tokens,
     SearchTime = !.Info ^ i_search_time,
-    index_poll_terms(Tokens, IndexPollTerms, !IO),
+    index_poll_terms(Tokens, IndexPollTerms),
     % Could use notmuch count --batch
     Args =
         ["count", "--"] ++
@@ -2045,10 +2045,9 @@ sched_poll(Time, !Info, !IO) :-
     push_lowprio_async(Op, _Pushed, !IO),
     !Info ^ i_next_poll_time := next_poll_time(Config, Time).
 
-:- pred index_poll_terms(list(token), list(string), io, io).
-:- mode index_poll_terms(in, out, di, uo) is det.
+:- pred index_poll_terms(list(token)::in, list(string)::out) is det.
 
-index_poll_terms(Tokens, IndexPollTerms, !IO) :-
+index_poll_terms(Tokens, IndexPollTerms) :-
     tokens_to_search_terms(Tokens, SearchTerms),
     IndexPollTerms = ["(", SearchTerms, ")", "AND", "tag:unread"].
 

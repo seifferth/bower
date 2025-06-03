@@ -312,7 +312,7 @@ start_op(Op, Return, !Info, !IO) :-
     require.expect(unify(MaybeChild0, no), $module, $pred,
         "already have child process"),
     get_sigchld_count(PreSigchldCount, !IO),
-    spawn_process_for_op(Op, PreSigchldCount, Res, !Info, !IO),
+    spawn_process_for_op(Op, PreSigchldCount, Res, !IO),
     (
         Res = ok(Child),
         !Info ^ ai_maybe_child := yes(Child),
@@ -323,9 +323,9 @@ start_op(Op, Return, !Info, !IO) :-
     ).
 
 :- pred spawn_process_for_op(async_op::in, int::in, io.res(current_child)::out,
-    async_info::in, async_info::out, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
-spawn_process_for_op(Op, PreSigchldCount, Res, !Info, !IO) :-
+spawn_process_for_op(Op, PreSigchldCount, Res, !IO) :-
     Op = async_shell_command(CommandPrefix, UnquotedArgs, _RemainingAttempts),
     shell_and_args(CommandPrefix, UnquotedArgs, redirect_input("/dev/null"),
         Shell, ShellArgs),
@@ -338,7 +338,7 @@ spawn_process_for_op(Op, PreSigchldCount, Res, !Info, !IO) :-
         SpawnRes = error(Error),
         Res = error(Error)
     ).
-spawn_process_for_op(Op, PreSigchldCount, Res, !Info, !IO) :-
+spawn_process_for_op(Op, PreSigchldCount, Res, !IO) :-
     Op = async_lowprio_command(CommandPrefix, UnquotedArgs,
         MaybeStdinContents),
     (

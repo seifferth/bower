@@ -62,7 +62,7 @@ parse_address(Opt, Input, Address) :-
 
 :- pred no_skip_whitespace(src::in, unit::out, ps::in, ps::out) is semidet.
 
-no_skip_whitespace(_Src, unit, !PS) :-
+no_skip_whitespace(_Src, unit, PS, PS) :-
     semidet_true.
 
 :- pred eof_after(parser(T)::in(parser), src::in, T::out, ps::in, ps::out)

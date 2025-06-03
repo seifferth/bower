@@ -239,7 +239,7 @@ get_key_info(key(Info, _)) = Info.
 
 :- pred make_key_info(gpgme_key::in, key_info::out, io::di, io::uo) is det.
 
-make_key_info(Key, Info, !IO) :-
+make_key_info(Key, Info, IO, IO) :-
     promise_pure (
         semipure gpgme_key_fields(Key, Revoked, Expired, Disabled, Invalid,
             CanEncrypt, CanSign, CanCertify, CanAuthenticate,
