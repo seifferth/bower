@@ -2116,7 +2116,7 @@ draw_pager_line(Attrs, Screen, Panel, Line, IsCursor, ObscureLine, !IO) :-
             ;
                 MaybeUserId = no,
                 MaybeFingerprint = yes(Fingerprint),
-                draw(Screen, Panel, BodyAttr, "fingerprint ", !IO),
+                draw(Screen, Panel, BodyAttr, "fpr ", !IO),
                 draw(Screen, Panel, BodyAttr, Fingerprint, !IO)
             ;
                 MaybeUserId = no,
@@ -2127,7 +2127,7 @@ draw_pager_line(Attrs, Screen, Panel, Line, IsCursor, ObscureLine, !IO) :-
             (
                 MaybeExpires = yes(Expires),
                 localtime(Expires, TM, !IO),
-                draw(Screen, Panel, BodyAttr, "; expires ", !IO),
+                draw(Screen, Panel, BodyAttr, "; exp ", !IO),
                 draw(Screen, Panel, BodyAttr, asctime(TM), !IO)
             ;
                 MaybeExpires = no
