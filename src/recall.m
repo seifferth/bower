@@ -224,7 +224,7 @@ enter(Info, Transition, !IO) :-
         Info = recall_info(Config, _Scrollable0),
         run_notmuch(Config,
             [
-                "show", "--format=json", "--part=0", "--decrypt",
+                "show", "--format=json", "--part=0", "--decrypt=true",
                 "--", message_id_to_search_term(MessageId)
             ],
             soft_suspend_curses, % Decryption may invoke pinentry-curses.

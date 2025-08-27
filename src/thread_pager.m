@@ -379,7 +379,7 @@ decrypt_arg(not_decrypted) = decrypt_arg_bool(no).
 
 :- func decrypt_arg_bool(bool) = string.
 
-decrypt_arg_bool(yes) = "--decrypt".
+decrypt_arg_bool(yes) = "--decrypt=true".
 decrypt_arg_bool(no) = "--decrypt=false".
 
 :- func verify_arg(bool) = string.
@@ -2225,7 +2225,7 @@ do_decrypt_part(Screen, MessageId, PartId, MessageUpdate, !Info, !IO) :-
     Config = !.Info ^ tp_config,
     run_notmuch(Config,
         [
-            "show", "--format=json", "--decrypt",
+            "show", "--format=json", "--decrypt=true",
             part_id_to_part_option(PartId),
             "--", message_id_to_search_term(MessageId)
         ],

@@ -367,7 +367,7 @@ reply_to_arg(list_reply) = "--reply-to=all".
 
 :- func decrypt_arg(bool) = string.
 
-decrypt_arg(yes) = "--decrypt".
+decrypt_arg(yes) = "--decrypt=true".
 decrypt_arg(no) = "--decrypt=false".
 
 :- pred set_headers_for_group_reply(headers::in, headers::out) is det.

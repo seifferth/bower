@@ -570,7 +570,7 @@ get_external_part_base64(Config, Part, PausedCurs, Res, !IO) :-
 
 :- func decrypt_arg(maybe_decrypted) = string.
 
-decrypt_arg(is_decrypted) = "--decrypt".
+decrypt_arg(is_decrypted) = "--decrypt=true".
 decrypt_arg(not_decrypted) = "--decrypt=false".
 
 %-----------------------------------------------------------------------------%

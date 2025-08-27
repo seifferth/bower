@@ -2321,7 +2321,7 @@ decrypt_arg(not_decrypted) = decrypt_arg_bool(no).
 
 :- func decrypt_arg_bool(bool) = string.
 
-decrypt_arg_bool(yes) = "--decrypt".
+decrypt_arg_bool(yes) = "--decrypt=true".
 decrypt_arg_bool(no) = "--decrypt=false".
 
 %-----------------------------------------------------------------------------%
