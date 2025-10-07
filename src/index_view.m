@@ -501,9 +501,14 @@ index_loop(Screen, OnEntry, MaybeUpdateActivity, !.IndexInfo, !IO) :-
             Initial, Completion, FirstTime, Return, !IO),
         (
             Return = yes(LimitString),
-            add_history_nodup(LimitString, History0, History),
-            !IndexInfo ^ i_common_history ^ ch_limit_history := History,
-            search_new_limit_string(Screen, LimitString, no, !IndexInfo, !IO)
+            ( LimitString = "" ->
+                update_message(Screen, clear_message, !IO)
+            ;
+                add_history_nodup(LimitString, History0, History),
+                !IndexInfo ^ i_common_history ^ ch_limit_history := History,
+                search_new_limit_string(Screen, LimitString, no,
+                    !IndexInfo, !IO)
+            )
         ;
             Return = no,
             update_message(Screen, clear_message, !IO)
