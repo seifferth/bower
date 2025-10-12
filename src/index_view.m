@@ -500,7 +500,8 @@ index_loop(Screen, OnEntry, MaybeUpdateActivity, !.IndexInfo, !IO) :-
         text_entry_full(Screen, "Limit to messages matching: ", History0,
             Initial, Completion, FirstTime, Return, !IO),
         (
-            Return = yes(LimitString),
+            Return = yes(LimitString0),
+            LimitString = string.strip(LimitString0),
             ( LimitString = "" ->
                 update_message(Screen, clear_message, !IO)
             ;
