@@ -114,6 +114,7 @@ exclude_user_tag_at_compose(tag("replied")).
 exclude_user_tag_at_compose(tag("sent")).
 exclude_user_tag_at_compose(tag("signed")).
 exclude_user_tag_at_compose(tag("unread")).
+exclude_user_tag_at_compose(tag("inbox")).
 
 %-----------------------------------------------------------------------------%
 
