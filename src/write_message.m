@@ -357,8 +357,7 @@ write_discrete_content_type(Stream, ContentType, MaybeCharset, !IO) :-
     ),
     (
         MaybeCharset = yes(Charset),
-        put(Stream, "; charset=", !IO),
-        put(Stream, Charset, !IO)
+        put(Stream, "; charset=""" ++ Charset ++ """", !IO)
     ;
         MaybeCharset = no
     ),
