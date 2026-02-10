@@ -602,7 +602,7 @@ create_edit_stage_2(Config, Screen, Headers0, Text0, UseAltHtmlFilter,
         !CryptoInfo, !History, !IO) :-
     make_parsed_headers(Headers0, ParsedHeaders0),
     create_temp_message_file(Config, prepare_edit(MaybeAppendSignature),
-        Headers0, ParsedHeaders0, Text0, no, Attachments, !.CryptoInfo,
+        Headers0, ParsedHeaders0, no, Text0, no, Attachments, !.CryptoInfo,
         _MessageId, ResFilename, _MaybeWarning, !IO),
     (
         ResFilename = ok(Filename),
@@ -2197,8 +2197,8 @@ postpone(Config, Screen, Headers, ParsedHeaders, Text, Attachments,
         CryptoInfo, InteractiveTags, Res, MessageUpdate, !IO) :-
     MaybeAltHtml = no,
     create_temp_message_file(Config, prepare_postpone, Headers, ParsedHeaders,
-        Text, MaybeAltHtml, Attachments, CryptoInfo, _MessageId, ResFilename,
-        Warnings, !IO),
+        no, Text, MaybeAltHtml, Attachments, CryptoInfo, _MessageId,
+        ResFilename, Warnings, !IO),
     (
         ResFilename = ok(Filename),
         (
@@ -2273,9 +2273,10 @@ maybe_remove_draft(StagingInfo, !IO) :-
 
 send_mail(Config, Account, Screen, Headers, ParsedHeaders, Text, MaybeAltHtml,
         Attachments, CryptoInfo, InteractiveTags, Res, MessageUpdate, !IO) :-
+    make_autocrypt_header(Account, MaybeAutocryptHeader),
     create_temp_message_file(Config, prepare_send, Headers, ParsedHeaders,
-        Text, MaybeAltHtml, Attachments, CryptoInfo, MessageId, ResFilename,
-        Warnings, !IO),
+        MaybeAutocryptHeader, Text, MaybeAltHtml, Attachments, CryptoInfo,
+        MessageId, ResFilename, Warnings, !IO),
     (
         ResFilename = ok(Filename),
         prompt_confirm_warnings(Screen, Warnings, ConfirmAll, !IO),
@@ -2306,6 +2307,25 @@ send_mail(Config, Account, Screen, Headers, ParsedHeaders, Text, MaybeAltHtml,
         ResFilename = error(Error),
         MessageUpdate = set_warning(Error),
         Res = not_sent
+    ).
+
+:- pred make_autocrypt_header(account::in, maybe(header)::out) is det.
+
+make_autocrypt_header(Account, MaybeAutocryptHeader) :-
+    get_autocrypt_keydata(Account, MaybeAutocryptKeydata),
+    (
+        MaybeAutocryptKeydata = yes(Keydata),
+        get_from_address(Account, mailbox(_DisplayName, AddrSpec)),
+        addr_spec_to_string(AddrSpec, Addr, yes)
+    ->
+        AutocryptHeaderValue = header_value(
+            "addr=" ++ Addr ++ "; prefer-encrypt=mutual;\n" ++
+            word_wrap("keydata=" ++ Keydata, 76)
+        ),
+        MaybeAutocryptHeader = yes(header(field_name("Autocrypt"),
+            unstructured(AutocryptHeaderValue, no_encoding)))
+    ;
+        MaybeAutocryptHeader = no
     ).
 
 :- pred prompt_confirm_warnings(screen::in, list(string)::in, bool::out,
@@ -2452,18 +2472,18 @@ tag_replied_message(Config, Headers, Res, !IO) :-
     ;       do_not_append_signature.
 
 :- pred create_temp_message_file(prog_config::in, prepare_temp::in,
-    headers::in, parsed_headers::in, string::in, maybe(string)::in,
-    list(attachment)::in, crypto_info::in, message_id::out,
+    headers::in, parsed_headers::in, maybe(header)::in, string::in,
+    maybe(string)::in, list(attachment)::in, crypto_info::in, message_id::out,
     maybe_error(string)::out, list(string)::out, io::di, io::uo) is det.
 
 create_temp_message_file(Config, Prepare, Headers, ParsedHeaders,
-        Text, MaybeAltHtml, Attachments, CryptoInfo, MessageId, Res,
-        Warnings, !IO) :-
+        MaybeAutocryptHeader, Text, MaybeAltHtml, Attachments, CryptoInfo,
+        MessageId, Res, Warnings, !IO) :-
     % We only use this timestamp to generate MIME boundaries.
     current_timestamp(timestamp(Seed), !IO),
     splitmix64.init(truncate_to_int(Seed), RS0),
-    make_headers(Prepare, Headers, ParsedHeaders, MessageId, WriteHeaders,
-        !IO),
+    make_headers(Prepare, Headers, ParsedHeaders, MaybeAutocryptHeader,
+        MessageId, WriteHeaders, !IO),
     (
         Prepare = prepare_edit(MaybeAppendSignature),
         (
@@ -2624,9 +2644,11 @@ get_addr_spec_in_mailbox(Mailbox, AddrSpec) :-
 %-----------------------------------------------------------------------------%
 
 :- pred make_headers(prepare_temp::in, headers::in, parsed_headers::in,
-    message_id::out, list(header)::out, io::di, io::uo) is det.
+    maybe(header)::in, message_id::out, list(header)::out,
+    io::di, io::uo) is det.
 
-make_headers(Prepare, Headers, ParsedHeaders, MessageId, WriteHeaders, !IO) :-
+make_headers(Prepare, Headers, ParsedHeaders, MaybeAutocryptHeader, MessageId,
+        WriteHeaders, !IO) :-
     Headers = headers(_Date, _From, _To, _Cc, _Bcc, Subject, _ReplyTo,
         InReplyTo, References, RestHeaders),
     ParsedHeaders = parsed_headers(MaybeExplicitDate, From, To, Cc, Bcc,
@@ -2720,6 +2742,12 @@ make_headers(Prepare, Headers, ParsedHeaders, MessageId, WriteHeaders, !IO) :-
                 !Acc)
         ;
             Prepare = prepare_edit(_)
+        ),
+        (
+            MaybeAutocryptHeader = yes(AutocryptHeader),
+            cons(AutocryptHeader, !Acc)
+        ;
+            MaybeAutocryptHeader = no
         ),
         map.foldl(maybe_cons_unstructured(SkipEmpty, Options), RestHeaders,
             !Acc),

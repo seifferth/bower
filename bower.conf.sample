@@ -151,6 +151,16 @@
     #
   ; post_sendmail =
 
+    # Autocrypt is a standard for in-band distribution of OpenPGP public
+    # keys via special email headers. The autocrypt_keydata field of these
+    # headers contains a base64-encoded public key (which is slightly
+    # different from an ASCII-armored public key). In order to add an
+    # Autocrypt header to emails created by bower, simply specify the
+    # autocrypt_keydata for this account below. For more information on
+    # Autocrypt see https://docs.autocrypt.org/.
+    #
+  ; autocrypt_keydata =
+
 ; [account.work]
 ;   from_address = My Name <user@work.example.org>
 ;   sendmail = /usr/bin/msmtp --account=work

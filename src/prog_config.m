@@ -123,6 +123,8 @@
 
 :- pred get_post_sendmail_action(account::in, post_sendmail::out) is det.
 
+:- pred get_autocrypt_keydata(account::in, maybe(string)::out) is det.
+
 :- pred get_exclude_tags(prog_config::in, set(tag)::out) is det.
 
 :- func generic_attrs(prog_config) = generic_attrs.
@@ -207,11 +209,12 @@
 
 :- type account(From)
     --->    account(
-                account_name    :: string,
-                from_address    :: From,
-                default         :: default_setting,
-                sendmail        :: command_prefix,
-                post_sendmail   :: post_sendmail
+                account_name        :: string,
+                from_address        :: From,
+                default             :: default_setting,
+                sendmail            :: command_prefix,
+                post_sendmail       :: post_sendmail,
+                autocrypt_keydata   :: maybe(string)
             ).
 
 :- type default_setting
@@ -847,7 +850,64 @@ parse_account_rest(Home, Name, Section, MaybeFrom, Default, Account,
         PostSendmail = default
     ),
 
-    Account = account(Name, MaybeFrom, Default, Sendmail, PostSendmail).
+    ( map.search(Section, "autocrypt_keydata", Keydata), Keydata \= "" ->
+        validate_autocrypt_keydata(Keydata, !Errors),
+        MaybeKeydata = yes(Keydata)
+    ;
+        MaybeKeydata = no
+    ),
+
+    Account = account(Name, MaybeFrom, Default, Sendmail, PostSendmail,
+        MaybeKeydata).
+
+:- pred validate_autocrypt_keydata(string::in,
+    list(string)::in, list(string)::out) is det.
+
+validate_autocrypt_keydata(Keydata, !Errors) :-
+    (
+        all_match(is_base64_char, rstrip_pred(is_equals_sign, Keydata))
+    ->
+        true
+    ;
+        Error = "invalid value for autocrypt_keydata: " ++ Keydata,
+        cons(Error, !Errors)
+    ).
+    % XXX Instead of just checking if the characters are allowed to occur
+    % in base64, it would be even better to use the base64 module to check
+    % that Keydata can actually be decoded.
+
+:- pred is_equals_sign(char::in) is semidet.
+
+is_equals_sign('=').
+
+:- pred is_base64_char(char::in) is semidet.
+
+is_base64_char('A'). is_base64_char('a'). is_base64_char('0').
+is_base64_char('B'). is_base64_char('b'). is_base64_char('1').
+is_base64_char('C'). is_base64_char('c'). is_base64_char('2').
+is_base64_char('D'). is_base64_char('d'). is_base64_char('3').
+is_base64_char('E'). is_base64_char('e'). is_base64_char('4').
+is_base64_char('F'). is_base64_char('f'). is_base64_char('5').
+is_base64_char('G'). is_base64_char('g'). is_base64_char('6').
+is_base64_char('H'). is_base64_char('h'). is_base64_char('7').
+is_base64_char('I'). is_base64_char('i'). is_base64_char('8').
+is_base64_char('J'). is_base64_char('j'). is_base64_char('9').
+is_base64_char('K'). is_base64_char('k'). is_base64_char('+').
+is_base64_char('L'). is_base64_char('l'). is_base64_char('/').
+is_base64_char('M'). is_base64_char('m').
+is_base64_char('N'). is_base64_char('n').
+is_base64_char('O'). is_base64_char('o').
+is_base64_char('P'). is_base64_char('p').
+is_base64_char('Q'). is_base64_char('q').
+is_base64_char('R'). is_base64_char('r').
+is_base64_char('S'). is_base64_char('s').
+is_base64_char('T'). is_base64_char('t').
+is_base64_char('U'). is_base64_char('u').
+is_base64_char('V'). is_base64_char('v').
+is_base64_char('W'). is_base64_char('w').
+is_base64_char('X'). is_base64_char('x').
+is_base64_char('Y'). is_base64_char('y').
+is_base64_char('Z'). is_base64_char('z').
 
 :- pred check_sendmail_command(command_prefix::in,
     list(string)::in, list(string)::out) is det.
@@ -916,14 +976,15 @@ get_notmuch_from_address(Config, Res) :-
     account::out) is det.
 
 set_default_from_address(DefaultFrom, Account0, Account) :-
-    Account0 = account(Name, MaybeFrom, Default, Sendmail, PostSendmail),
+    Account0 = account(Name, MaybeFrom, Default, Sendmail, PostSendmail,
+        Keydata),
     (
         MaybeFrom = yes(From)
     ;
         MaybeFrom = no,
         From = DefaultFrom
     ),
-    Account = account(Name, From, Default, Sendmail, PostSendmail).
+    Account = account(Name, From, Default, Sendmail, PostSendmail, Keydata).
 
 :- pred pick_default_account(list(account)::in, maybe(account)::out,
     list(string)::in, list(string)::out) is det.
@@ -1110,6 +1171,8 @@ get_sendmail_command(Account, sendmail_read_recipients, Command) :-
 
 get_post_sendmail_action(Account, Action) :-
     Action = Account ^ post_sendmail.
+
+get_autocrypt_keydata(Account, Account ^ autocrypt_keydata).
 
 %-----------------------------------------------------------------------------%
 
