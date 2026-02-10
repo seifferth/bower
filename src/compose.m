@@ -2163,7 +2163,7 @@ validity(validity_ultimate, "ultimate", yes).
 draw_crypto_line(Attrs, Screen, Panel, CryptoInfo, !IO) :-
     (
         CryptoInfo ^ ci_user_choice = encrypt_and_sign,
-        Body = "encrypt subject and message body; sign entire message"
+        Body = "encrypt & sign message"
     ;
         CryptoInfo ^ ci_user_choice = sign_only,
         Body = "sign message"
@@ -2819,15 +2819,42 @@ make_protected_headers(AllHeaders, ProtectionType, OuterHeaders,
 :- pred mask_outer_header(header::in, header::out) is semidet.
 
 mask_outer_header(InnerHeader, OuterHeader) :-
-    InnerHeader = header(field_name(Name), _),
-    % [RFC 9788] Baseline Header Confidentiality Policy
-    ( strcase_equal(Name, "Subject") ->
-        OuterHeader = header(field_name(Name),
-            unstructured(header_value("[...]"), no_encoding))
+    InnerHeader = header(field_name(Name), OriginalValue),
+    OuterHeader = header(field_name(Name), Mask),
+    (
+        Name = "Subject",
+        Mask = unstructured(header_value("[...]"), no_encoding)
     ;
-        not strcase_equal(Name, "Comments"),
-        not strcase_equal(Name, "Keywords"),
-        OuterHeader = InnerHeader
+        % XXX The code below should be good enough to remove the Display Name
+        % from well-formed From fields while still producing the addr_spec
+        % part. If the From field contains an unexpected value (such as a
+        % list of addresses or a bad_mailbox) this code will simply remove
+        % the entire From field. Since we definitely do not want to leak the
+        % Display Name when strong header protection is enabled, this seems
+        % like the safest failure mode for this error case. An alternative
+        % would be to display an error message to the user. If we discover
+        % that the From field can possibly have other reasonable values than
+        % the one expected below, we could simply extend the cases listed here.
+        Name = "From",
+        OriginalValue = address_list([mailbox(mailbox(_, FromAddrSpec))], _),
+        Mask = address_list([mailbox(mailbox(no, FromAddrSpec))], no_encoding)
+    ;
+        Name = "To",
+        Mask = unstructured(header_value("hidden-recipients:;"), no_encoding)
+    ;
+        % XXX This could be improved futher by using a spoofed Date in the
+        % outer header. Delta Chat, for instance, uses a spoofed value here.
+        Name = "Date",
+        Mask = OriginalValue
+    ;
+        Name = "Message-ID",
+        Mask = OriginalValue
+    ;
+        Name = "In-Reply-To",
+        Mask = OriginalValue
+    ;
+        Name = "References",
+        Mask = OriginalValue
     ).
 
 :- pred make_hp_outer(header::in, header::out) is det.
