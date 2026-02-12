@@ -2548,8 +2548,17 @@ create_temp_message_file(Config, Prepare, Headers, ParsedHeaders,
         (
             Encrypt = no,
             Sign = no,
-            make_text_and_attachments_mime_part(cte_8bit, Text, MaybeAltHtml,
-                Attachments, RS0, _RS, Res0),
+            (
+                TextLines = split_into_lines(Text),
+                MaxBytes = foldl(max, map(count_code_units, TextLines), 0),
+                MaxBytes > 998
+            ->
+                TextCTE = cte_quoted_printable
+            ;
+                TextCTE = cte_8bit
+            ),
+            make_text_and_attachments_mime_part(TextCTE, cte_8bit, Text,
+                MaybeAltHtml, Attachments, RS0, _RS, Res0),
             (
                 Res0 = ok(MimePart),
                 Spec = message_spec(WriteHeaders, mime_v1(MimePart)),
@@ -2566,7 +2575,8 @@ create_temp_message_file(Config, Prepare, Headers, ParsedHeaders,
             (
                 Sign = no,
                 MaybeSigners = no,
-                TextCTE = cte_8bit
+                TextCTE = cte_8bit,
+                TextAttachmentCTE = cte_8bit
             ;
                 Sign = yes,
                 get_sign_keys(CryptoInfo, ParsedHeaders, SignKeys),
@@ -2575,7 +2585,8 @@ create_temp_message_file(Config, Prepare, Headers, ParsedHeaders,
                 % "Messages which are encrypted and signed in this
                 % combined fashion are REQUIRED to follow the same
                 % canonicalization rules as multipart/signed objects."
-                TextCTE = cte_base64
+                TextCTE = cte_base64,
+                TextAttachmentCTE = cte_base64
             ),
             get_encrypt_keys(CryptoInfo, ParsedHeaders, EncryptForWhom,
                 EncryptKeys, Missing, LeakedBccs),
@@ -2590,8 +2601,8 @@ create_temp_message_file(Config, Prepare, Headers, ParsedHeaders,
                 EncryptKeys = [_ | _],
                 missing_keys_warning(Missing, WarningsA),
                 leaked_bccs_warning(LeakedBccs, WarningsB),
-                make_text_and_attachments_mime_part(TextCTE, Text,
-                    MaybeAltHtml, Attachments, RS0, RS1, Res0),
+                make_text_and_attachments_mime_part(TextCTE, TextAttachmentCTE,
+                    Text, MaybeAltHtml, Attachments, RS0, RS1, Res0),
                 (
                     Res0 = ok(PartToEncrypt),
                     generate_boundary(EncryptedBoundary, RS1, _RS),
@@ -2620,8 +2631,8 @@ create_temp_message_file(Config, Prepare, Headers, ParsedHeaders,
                 SignKeys = [_ | _],
                 % Force text parts to be base64-encoded to avoid being mangled
                 % during transfer.
-                make_text_and_attachments_mime_part(cte_base64, Text,
-                    MaybeAltHtml, Attachments, RS0, RS1, Res0),
+                make_text_and_attachments_mime_part(cte_base64, cte_base64,
+                    Text, MaybeAltHtml, Attachments, RS0, RS1, Res0),
                 (
                     Res0 = ok(PartToSign),
                     generate_boundary(SignedBoundary, RS1, _RS),
@@ -2857,11 +2868,12 @@ maybe_read_signature_file(Config, Res, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred make_text_and_attachments_mime_part(write_content_transfer_encoding::in,
-    string::in, maybe(string)::in, list(attachment)::in, splitmix64::in,
-    splitmix64::out, maybe_error(mime_part)::out) is det.
+    write_content_transfer_encoding::in, string::in, maybe(string)::in,
+    list(attachment)::in, splitmix64::in, splitmix64::out,
+    maybe_error(mime_part)::out) is det.
 
-make_text_and_attachments_mime_part(TextCTE, Text, MaybeAltHtml, Attachments,
-        BoundarySeed0, BoundarySeed1, Res) :-
+make_text_and_attachments_mime_part(TextCTE, TextAttachmentCTE, Text,
+        MaybeAltHtml, Attachments, BoundarySeed0, BoundarySeed1, Res) :-
     generate_boundary(MixedBoundary, BoundarySeed0, BoundarySeed1Half),
     TextPlainPart = discrete(text_plain, yes("utf-8"),
         yes(write_content_disposition(inline, no)), yes(TextCTE), text(Text)),
@@ -2872,8 +2884,8 @@ make_text_and_attachments_mime_part(TextCTE, Text, MaybeAltHtml, Attachments,
     ;
         MaybeAltHtml = yes(HtmlContent),
         TextHtmlPart = discrete(text_html, yes("utf-8"),
-            yes(write_content_disposition(inline, no)), yes(TextCTE),
-            text(HtmlContent)),
+            yes(write_content_disposition(inline, no)),
+            yes(cte_quoted_printable), text(HtmlContent)),
         generate_boundary(MultipartBoundary, BoundarySeed1Half, BoundarySeed1),
         TextPart = composite(multipart_alternative,
             boundary(MultipartBoundary),
@@ -2885,8 +2897,8 @@ make_text_and_attachments_mime_part(TextCTE, Text, MaybeAltHtml, Attachments,
         Res = ok(TextPart)
     ;
         Attachments = [_ | _],
-        list.map_foldl(make_attachment_mime_part(TextCTE), Attachments,
-            AttachmentParts, [], AnyErrors),
+        list.map_foldl(make_attachment_mime_part(TextAttachmentCTE),
+            Attachments, AttachmentParts, [], AnyErrors),
         (
             AnyErrors = [],
             MultiPart = composite(multipart_mixed, boundary(MixedBoundary),
@@ -2903,7 +2915,8 @@ make_text_and_attachments_mime_part(TextCTE, Text, MaybeAltHtml, Attachments,
 :- pred make_attachment_mime_part(write_content_transfer_encoding::in,
     attachment::in, mime_part::out, list(string)::in, list(string)::out) is det.
 
-make_attachment_mime_part(TextCTE, Attachment, MimePart, !AnyErrors) :-
+make_attachment_mime_part(TextAttachmentCTE, Attachment, MimePart,
+        !AnyErrors) :-
     (
         Attachment = old_attachment(OldPart),
         OldPart = part(_MessageId, _OldPartId, ContentType,
@@ -2955,7 +2968,8 @@ make_attachment_mime_part(TextCTE, Attachment, MimePart, !AnyErrors) :-
         (
             Content = text_content(Text),
             MimePart = discrete(text_plain, MaybeCharset,
-                yes(WriteContentDisposition), yes(TextCTE), text(Text))
+                yes(WriteContentDisposition), yes(TextAttachmentCTE),
+                text(Text))
         ;
             Content = base64_encoded(Base64),
             MimePart = discrete(ContentType, MaybeCharset,

@@ -93,7 +93,8 @@
 
 :- type write_content_transfer_encoding
     --->    cte_8bit
-    ;       cte_base64.
+    ;       cte_base64
+    ;       cte_quoted_printable.
 
 :- type mime_part_body
     --->    text(string)
@@ -140,6 +141,7 @@
 :- import_module call_system.
 :- import_module process.
 :- import_module quote_command.
+:- import_module quoted_printable.
 :- import_module rfc2045.
 :- import_module rfc2231.
 
@@ -320,8 +322,8 @@ write_mime_part_nocatch(Stream, Config, MimePart, PausedCurs, Res, !IO) :-
             MaybeTransferEncoding = no,
             TransferEncoding = cte_8bit
         ),
-        write_mime_part_body(Stream, Config, TransferEncoding, Body,
-            PausedCurs, Res, !IO)
+        write_mime_part_body(Stream, Config, MaybeCharset, TransferEncoding,
+            Body, PausedCurs, Res, !IO)
     ;
         MimePart = composite(ContentType, Boundary, MaybeContentDisposition,
             MaybeTransferEncoding, SubParts),
@@ -444,6 +446,9 @@ write_content_transfer_encoding(Stream, CTE, !IO) :-
     ;
         CTE = cte_base64,
         put(Stream, "Content-Transfer-Encoding: base64\n", !IO)
+    ;
+        CTE = cte_quoted_printable,
+        put(Stream, "Content-Transfer-Encoding: quoted-printable\n", !IO)
     ).
 
 :- pred write_mime_subparts(Stream::in, prog_config::in, boundary::in,
@@ -491,19 +496,40 @@ write_mime_final_boundary(Stream, boundary(Boundary), !IO) :-
     put(Stream, Boundary, !IO),
     put(Stream, "--\n", !IO).
 
-:- pred write_mime_part_body(Stream::in, prog_config::in,
+:- pred write_mime_part_body(Stream::in, prog_config::in, maybe(string)::in,
     write_content_transfer_encoding::in, mime_part_body::in,
     i_paused_curses::in, maybe_error::out, io::di, io::uo) is det
     <= writer(Stream).
 
-write_mime_part_body(Stream, Config, TransferEncoding, Body, PausedCurs, Res,
-        !IO) :-
+write_mime_part_body(Stream, Config, MaybeCharset, TransferEncoding, Body,
+        PausedCurs, Res, !IO) :-
     (
         TransferEncoding = cte_8bit,
         (
             Body = text(EncodedBody),
             put(Stream, EncodedBody, !IO),
             Res = ok
+        ;
+            Body = base64(_),
+            Res = error("write_mime_part_body: expected text, got base64")
+        ;
+            Body = external(_),
+            Res = error("write_mime_part_body: expected text, got external")
+        )
+    ;
+        TransferEncoding = cte_quoted_printable,
+        (
+            Body = text(EncodedBody),
+            (
+                MaybeCharset = yes("utf-8")
+            ->
+                make_quoted_printable(utf8, EncodedBody, QuotedEncodedBody),
+                put(Stream, QuotedEncodedBody, !IO),
+                Res = ok
+            ;
+                Res = error("write_mime_part_body: cte_quoted_printable is " ++
+                            "only supported in combination with charset=utf-8")
+            )
         ;
             Body = base64(_),
             Res = error("write_mime_part_body: expected text, got base64")

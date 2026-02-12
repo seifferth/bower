@@ -1,0 +1,93 @@
+This is a simple short line in pure ASCII.
+--------
+Th=C3=AFs =C3=AFs a l=C3=AFne conta=C3=AFn=C3=AFng non-ASCII characters.
+--------
+A long line (i.e. longer than 76 characters allowed in RFC 5321) that needs=
+ to be broken across multiple lines when it is encoded using quoted-printab=
+le Content-Transfer-Encoding.
+--------
+Another long line, th=C3=AFs t=C3=AFme containing non-ASCII characters that=
+ take up more code points when they are encoded.
+--------
+
+--------
+=20
+--------
+=09
+--------
+A line containing trailing whitespace:           =20
+--------
+A line containing trailing whitespace that breaks across two lines:        =
+   =20
+--------
+A line containing trailing whitespace that breaks across two lines:        =
+    (but does not end in whitespace)
+--------
+A line ending with an explicit newline character.
+
+--------
+Trailing whitespace, comfortably fitting the line:    =20
+--------
+Trailing whitespace, going up to the character limit:                    =20
+--------
+Trailing whitespace, going beyond the character limit (case 1):           =
+=20
+--------
+Trailing whitespace, going beyond the character limit (case 2):            =
+=20
+--------
+Trailing whitespace, going beyond the character limit (case 3):            =
+ =20
+--------
+A line ending with an explicit newline character.
+
+And an additional trailing line.
+--------
+Trailing whitespace, comfortably fitting the line:    =20
+And an additional trailing line.
+--------
+Trailing whitespace, going up to the character limit:                    =20
+And an additional trailing line.
+--------
+Trailing whitespace, going beyond the character limit (case 1):           =
+=20
+And an additional trailing line.
+--------
+Trailing whitespace, going beyond the character limit (case 2):            =
+=20
+And an additional trailing line.
+--------
+Trailing whitespace, going beyond the character limit (case 3):            =
+ =20
+And an additional trailing line.
+--------
+UTF-8 [=C3=A4=C3=AB=C3=AF=C3=B6=C3=BC], whitespace, comfortable:      =20
+--------
+UTF-8 [=C3=AB=C3=AF], whitespace, up to the character limit:             =20
+--------
+UTF-8 [=C3=AB=C3=AF], whitespace, beyond the character limit (case 1):    =
+=20
+--------
+UTF-8 [=C3=AB=C3=AF], whitespace, beyond the character limit (case 2):     =
+=20
+--------
+UTF-8 [=C3=AB=C3=AF], whitespace, beyond the character limit (case 3):     =
+ =20
+--------
+UTF-8 non-ASCII characters at the line breaking boundary: =C3=A4=C3=AB=C3=
+=AF=C3=B6=C3=BC
+--------
+UTF-8 non-ASCII characters at the line breaking boundary: _ =C3=A4=C3=AB=C3=
+=AF=C3=B6=C3=BC
+--------
+UTF-8 non-ASCII characters at the line breaking boundary: __ =C3=A4=C3=AB=
+=C3=AF=C3=B6=C3=BC
+--------
+UTF-8 non-ASCII characters at the line breaking boundary: __ =C3=A4=C3=AB__=
+=C3=AF=C3=B6=C3=BC
+--------
+UTF-8 non-ASCII characters at the line breaking boundary: __ =C3=A4=C3=AB__=
+_=C3=AF=C3=B6=C3=BC
+--------
+END
+--------
