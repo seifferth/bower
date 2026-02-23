@@ -544,7 +544,8 @@ continue_from_message(Config, Crypto, Screen, ContinueBase, Message,
                     PostponedMetadata ^ retain_date = retain_date
                 )
             ;
-                ContinueBase = arbitrary_message
+                ContinueBase = arbitrary_message,
+                !Headers ^ h_date := header_value("")
             ),
             Headers = !.Headers
         ),
