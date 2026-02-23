@@ -547,6 +547,8 @@ continue_from_message(Config, Crypto, Screen, ContinueBase, Message,
                 ContinueBase = arbitrary_message,
                 !Headers ^ h_date := header_value("")
             ),
+            % XXX header name matching should really be insensitive to case
+            !Headers ^ h_rest := delete(!.Headers ^ h_rest, "Autocrypt"),
             Headers = !.Headers
         ),
         (
