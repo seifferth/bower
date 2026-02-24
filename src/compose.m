@@ -2967,9 +2967,18 @@ make_attachment_mime_part(TextAttachmentCTE, Attachment, MimePart,
             yes(filename(FileName))),
         (
             Content = text_content(Text),
+            (
+                TextAttachmentCTE = cte_8bit,
+                TextLines = split_into_lines(Text),
+                MaxBytes = foldl(max, map(count_code_units, TextLines), 0),
+                MaxBytes > 998
+            ->
+                EffectiveCTE = cte_base64
+            ;
+                EffectiveCTE = TextAttachmentCTE
+            ),
             MimePart = discrete(text_plain, MaybeCharset,
-                yes(WriteContentDisposition), yes(TextAttachmentCTE),
-                text(Text))
+                yes(WriteContentDisposition), yes(EffectiveCTE), text(Text))
         ;
             Content = base64_encoded(Base64),
             MimePart = discrete(ContentType, MaybeCharset,
