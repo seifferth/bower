@@ -929,6 +929,26 @@ maybe_expand_mailbox(Config, Opt, Mailbox0, Mailbox, !Cache, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred get_frozen_tags(maybe(account)::in, list(tag)::out) is det.
+
+get_frozen_tags(MaybeAccount, FrozenTags) :-
+    (
+        MaybeAccount = yes(Account),
+        get_autocrypt_keydata(Account, MaybeKeydata),
+        (
+            MaybeKeydata = yes(_),
+            FrozenTags = [tag("autocrypt")]
+        ;
+            MaybeKeydata = no,
+            FrozenTags = []
+        )
+    ;
+        MaybeAccount = no,
+        FrozenTags = []
+    ).
+
+%-----------------------------------------------------------------------------%
+
     % XXX should probably just return staging_info, etc.
     % then common_history does not need to be separate
     %
@@ -950,7 +970,8 @@ staging_screen(Screen, MaybeKey, !.StagingInfo, !.AttachInfo, !.PagerInfo,
         MaybeSepPanel, PagerPanels),
     draw_header_lines(Screen, HeaderPanels, Attrs, Headers, ParsedHeaders,
         MaybeAccount, !.CryptoInfo, !IO),
-    draw_tags_line(Screen, MaybeTagsPanel, Tags, Attrs, !IO),
+    get_frozen_tags(MaybeAccount, FrozenTags),
+    draw_tags_line(Screen, MaybeTagsPanel, Tags, FrozenTags, Attrs, !IO),
     scrollable.draw(draw_attachment_line(Attrs), Screen, AttachmentPanels,
         !.AttachInfo, !IO),
     draw_attachments_label(Screen, AttachmentPanels, Attrs, !IO),
@@ -1368,12 +1389,14 @@ edit_tags(Screen, MaybePromptAddition, !StagingInfo, !History, !IO) :-
     Config = !.StagingInfo ^ si_config,
     Tags0 = !.StagingInfo ^ si_tags,
     History0 = !.History ^ ch_tag_history,
-    make_initial_edit_tags_string(Tags0, MaybePromptAddition, Initial),
+    tag_list_to_string(Tags0, no, MaybePromptAddition, Initial),
     list.map(tag_to_string, Tags0, TagStrings),
     TagStringSet = set.from_list(TagStrings),
     Completion = complete_tags_smart(Config, TagStringSet, TagStringSet),
     FirstTime = no,
-    text_entry_full(Screen, "Tags: ", History0, Initial, Completion,
+    get_frozen_tags(!.StagingInfo ^ si_account, FrozenTags),
+    tag_list_to_string(FrozenTags, yes("Tags:"), no, Prompt),
+    text_entry_full(Screen, Prompt, History0, Initial, Completion,
         FirstTime, Return, !IO),
     (
         Return = yes(String),
@@ -1396,22 +1419,29 @@ edit_tags(Screen, MaybePromptAddition, !StagingInfo, !History, !IO) :-
         Return = no
     ).
 
-:- pred make_initial_edit_tags_string(list(tag)::in, maybe(string)::in,
+:- pred tag_list_to_string(list(tag)::in, maybe(string)::in, maybe(string)::in,
     string::out) is det.
 
-make_initial_edit_tags_string(Tags, MaybePromptAddition, String) :-
+tag_list_to_string(Tags, MaybePrefix, MaybeSuffix, String) :-
     list.map(tag_to_string, Tags, Words0),
     (
-        MaybePromptAddition = yes(PromptAddition),
-        Words = Words0 ++ [PromptAddition]
+        MaybePrefix = yes(Prefix),
+        Words1 = [Prefix] ++ Words0
     ;
-        MaybePromptAddition = no,
+        MaybePrefix = no,
+        Words1 = Words0
+    ),
+    (
+        MaybeSuffix = yes(Suffix),
+        Words = Words1 ++ [Suffix]
+    ;
+        MaybeSuffix = no,
         (
-            Words0 = [],
+            Words1 = [],
             Words = []
         ;
-            Words0 = [_ | _],
-            Words = Words0 ++ [""]
+            Words1 = [_ | _],
+            Words = Words1 ++ [""]
         )
     ),
     String = string.join_list(" ", Words).
@@ -2040,14 +2070,14 @@ draw_crypto_line(Attrs, Screen, Panel, CryptoInfo, !IO) :-
     draw(Screen, Panel, Attrs ^ c_generic ^ field_body, Body, !IO).
 
 :- pred draw_tags_line(screen::in, maybe(vpanel)::in, list(tag)::in,
-    compose_attrs::in, io::di, io::uo) is det.
+    list(tag)::in, compose_attrs::in, io::di, io::uo) is det.
 
-draw_tags_line(_, no, _, _, !IO).
-draw_tags_line(Screen, yes(Panel), Tags, Attrs, !IO) :-
+draw_tags_line(_, no, _, _, _, !IO).
+draw_tags_line(Screen, yes(Panel), Tags, FrozenTags, Attrs, !IO) :-
     erase(Screen, Panel, !IO),
     draw(Screen, Panel, Attrs ^ c_generic ^ field_name, "    Tags: ", !IO),
     attr(Screen, Panel, Attrs ^ c_generic ^ field_body, !IO),
-    draw_tags(Screen, Panel, Tags, !IO).
+    draw_tags(Screen, Panel, FrozenTags ++ Tags, !IO).
 
 :- pred draw_tags(screen::in, vpanel::in, list(tag)::in, io::di, io::uo)
     is det.
