@@ -2351,10 +2351,11 @@ make_autocrypt_header(Account, MaybeAutocryptHeader) :-
         get_from_address(Account, mailbox(_DisplayName, AddrSpec)),
         addr_spec_to_string(AddrSpec, Addr, yes)
     ->
-        AutocryptHeaderValue = header_value(
-            "addr=" ++ Addr ++ "; prefer-encrypt=mutual;\n" ++
-            word_wrap("keydata=" ++ Keydata, 76)
-        ),
+        KeydataLines = chunk_string("keydata=" ++ Keydata, 76, " "),
+        AutocryptHeaderValue =
+            header_value(string.append_list([
+                "addr=", Addr, "; prefer-encrypt=mutual;\n"
+                | KeydataLines])),
         MaybeAutocryptHeader = yes(header(field_name("Autocrypt"),
             unstructured(AutocryptHeaderValue, no_encoding)))
     ;

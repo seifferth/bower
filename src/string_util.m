@@ -49,6 +49,15 @@
 
 :- func unlines(list(string)) = string.
 
+    % chunk_string(String, ChunkLen, Prefix) = Lines:
+    %
+    % Break String into a list of Chunks, where each chunk except the last will
+    % be of ChunkLen code units. The last chunk will have a length between 1
+    % and ChunkLen. Each chunk will be prefixed with Prefix, which is not
+    % counted as part of the length.
+    %
+:- func chunk_string(string, int, string) = list(string).
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -299,6 +308,24 @@ unlines(Lines) = String :-
 
 make_unlines_pieces(Line, RevPieces0, RevPieces) :-
     RevPieces = literal("\n", literal(Line, RevPieces0)).
+
+%-----------------------------------------------------------------------------%
+
+chunk_string(S, ChunkLen, Prefix) = Chunks :-
+    chunk_loop(S, 0, count_code_units(S), ChunkLen, Prefix, Chunks).
+
+:- pred chunk_loop(string::in, int::in, int::in, int::in, string::in,
+    list(string)::out) is det.
+
+chunk_loop(S, Pos0, EndPos, ChunkLen, Prefix, Chunks) :-
+    ( if Pos0 >= EndPos then
+        Chunks = []
+    else
+        Pos1 = min(Pos0 + ChunkLen, EndPos),
+        Chunk = Prefix ++ string.unsafe_between(S, Pos0, Pos1),
+        chunk_loop(S, Pos1, EndPos, ChunkLen, Prefix, TailChunks),
+        Chunks = [Chunk | TailChunks]
+    ).
 
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sts=4 sw=4 et
