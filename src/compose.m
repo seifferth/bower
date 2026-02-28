@@ -2548,14 +2548,10 @@ create_temp_message_file(Config, Prepare, Headers, ParsedHeaders,
         (
             Encrypt = no,
             Sign = no,
-            (
-                TextLines = split_into_lines(Text),
-                MaxBytes = foldl(max, map(count_code_units, TextLines), 0),
-                MaxBytes > 998
-            ->
-                TextCTE = cte_quoted_printable
-            ;
+            ( all_lines_within_length(Text, 998) ->
                 TextCTE = cte_8bit
+            ;
+                TextCTE = cte_quoted_printable
             ),
             make_text_and_attachments_mime_part(TextCTE, cte_8bit, Text,
                 MaybeAltHtml, Attachments, RS0, _RS, Res0),
@@ -2867,6 +2863,33 @@ maybe_read_signature_file(Config, Res, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
+:- pred all_lines_within_length(string::in, int::in) is semidet.
+
+all_lines_within_length(Str, MaxLen) :-
+    all_lines_within_length_loop(Str, 0, count_code_units(Str), MaxLen).
+
+:- pred all_lines_within_length_loop(string::in, int::in, int::in, int::in)
+    is semidet.
+
+all_lines_within_length_loop(Str, Index0, EndIndex, MaxLen) :-
+    ( Index0 < EndIndex ->
+        % Mercury 20.06 only has unsafe_sub_string_search_start,
+        % not unsafe_find_first_char_start.
+        ( string.unsafe_sub_string_search_start(Str, "\n", Index0, Nl) ->
+            LineLen = Nl - Index0,
+            Index1 = Nl + 1
+        ;
+            LineLen = EndIndex - Index0,
+            Index1 = EndIndex
+        ),
+        LineLen =< MaxLen,
+        all_lines_within_length_loop(Str, Index1, EndIndex, MaxLen)
+    ;
+        true
+    ).
+
+%-----------------------------------------------------------------------------%
+
 :- pred make_text_and_attachments_mime_part(write_content_transfer_encoding::in,
     write_content_transfer_encoding::in, string::in, maybe(string)::in,
     list(attachment)::in, splitmix64::in, splitmix64::out,
@@ -2969,9 +2992,7 @@ make_attachment_mime_part(TextAttachmentCTE, Attachment, MimePart,
             Content = text_content(Text),
             (
                 TextAttachmentCTE = cte_8bit,
-                TextLines = split_into_lines(Text),
-                MaxBytes = foldl(max, map(count_code_units, TextLines), 0),
-                MaxBytes > 998
+                not all_lines_within_length(Text, 998)
             ->
                 EffectiveCTE = cte_base64
             ;
