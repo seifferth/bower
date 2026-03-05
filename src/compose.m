@@ -584,9 +584,16 @@ create_edit_stage(Config, Crypto, Screen, Headers0, Text0,
         EncryptInit, SignInit, Transition, !History, !IO) :-
     get_encrypt_by_default(Config, EncryptByDefault),
     get_sign_by_default(Config, SignByDefault),
-    CryptoInfo0 = init_crypto_info(Crypto,
-        EncryptByDefault `or` EncryptInit,
-        SignByDefault `or` SignInit),
+    Encrypt = EncryptInit `or` EncryptByDefault,
+    Sign = SignInit `or` Sign0,
+    (
+        SignByDefault = sign_all, Sign0 = yes
+    ;
+        SignByDefault = sign_none, Sign0 = no
+    ;
+        SignByDefault = sign_encrypted, Sign0 = Encrypt
+    ),
+    CryptoInfo0 = init_crypto_info(Crypto, Encrypt, Sign),
     get_use_alt_html_filter(Config, UseAltHtmlFilter),
     create_edit_stage_2(Config, Screen, Headers0, Text0, UseAltHtmlFilter,
         MaybeAppendSignature, Attachments, Tags, MaybeOldDraft, Transition,
@@ -1322,6 +1329,15 @@ update_header(Config, Opt, HeaderType, Input, !Headers, !Parsed, !IO) :-
 
 toggle_encrypt(StagingInfo, !CryptoInfo, !IO) :-
     !CryptoInfo ^ ci_encrypt := not(!.CryptoInfo ^ ci_encrypt),
+    get_sign_by_default(StagingInfo ^ si_config, SignByDefault),
+    (
+        SignByDefault = sign_all
+    ;
+        SignByDefault = sign_none
+    ;
+        SignByDefault = sign_encrypted,
+        !CryptoInfo ^ ci_sign := !.CryptoInfo ^ ci_encrypt
+    ),
     ParsedHeaders = StagingInfo ^ si_parsed_hdrs,
     maintain_encrypt_keys(ParsedHeaders, !CryptoInfo, !IO).
 

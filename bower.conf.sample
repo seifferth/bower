@@ -219,7 +219,10 @@
     #
   ; encrypt_by_default = false
 
-    # Enable signing by default when composing messages.
+    # Enable signing by default when composing messages. Valid values are true
+    # (always enable), false (never enable), and sign_encrypted (enable only
+    # for encrypted messages). Irrespective of these defaults, both encryption
+    # and signing can be adjusted manually on a per-message basis.
     #
   ; sign_by_default = false
 

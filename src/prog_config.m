@@ -48,6 +48,11 @@
     --->    no_max_threads
     ;       max_threads(int).
 
+:- type sign_by_default
+    --->    sign_all
+    ;       sign_none
+    ;       sign_encrypted.
+
 %-----------------------------------------------------------------------------%
 
 :- pred load_prog_config(load_prog_config_result::out, io::di, io::uo)
@@ -93,7 +98,7 @@
 
 :- pred get_encrypt_by_default(prog_config::in, bool::out) is det.
 
-:- pred get_sign_by_default(prog_config::in, bool::out) is det.
+:- pred get_sign_by_default(prog_config::in, sign_by_default::out) is det.
 
 :- pred get_decrypt_by_default(prog_config::in, bool::out) is det.
 
@@ -184,7 +189,7 @@
 
                 % [crypto]
                 encrypt_by_default :: bool,
-                sign_by_default :: bool,
+                sign_by_default :: sign_by_default,
                 decrypt_by_default :: bool,
                 verify_by_default :: bool,
 
@@ -459,13 +464,16 @@ make_prog_config(Home, Config, ProgConfig, NotmuchConfig, !Errors, !IO) :-
 
     ( search_config(Config, "crypto", "sign_by_default", Sign0) ->
         ( to_bool(Sign0, Sign1) ->
-            SignByDefault = Sign1
+            ( Sign1 = yes, SignByDefault = sign_all
+            ; Sign1 = no, SignByDefault = sign_none )
+        ;
+            Sign0 = "sign_encrypted", SignByDefault = sign_encrypted
         ;
             cons("sign_by_default invalid: " ++ Sign0, !Errors),
-            SignByDefault = no
+            SignByDefault = sign_none
         )
     ;
-        SignByDefault = no
+        SignByDefault = sign_none
     ),
 
     ( search_config(Config, "crypto", "decrypt_by_default", Decrypt0) ->
